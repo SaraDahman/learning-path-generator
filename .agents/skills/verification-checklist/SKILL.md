@@ -1,6 +1,6 @@
 ---
 name: verification-checklist
-description: How to prove a change works in the Learning Path Generator, which has no test runner, lint, typecheck, or format script. Covers npm run build, the health check, endpoint curls, the mandatory server restart after server or .env changes, port 5055 and the 24678 HMR collision, checking Zod enums against the database, and confirming no orphan rows after a partial failure. Use before declaring any change done, and whenever a dev server seems stuck or a change appears to have no effect.
+description: How to prove a change works in the Learning Path Generator, which has no test runner, lint, typecheck, or format script. Covers npm run build, the health check, endpoint curls, the mandatory server restart after server or .env changes, port 5055 and the 24678 HMR collision, checking Zod enums against the database, confirming generated content actually matches the requested goal, and confirming no orphan rows after a partial failure. Use before declaring any change done, and whenever a dev server seems stuck or a change appears to have no effect.
 ---
 
 # VerificationChecklist
@@ -61,6 +61,33 @@ Every error response must have the envelope `{ error: { code, message, requestId
 
 Whenever a Zod enum touches a database column, verify the values match. `skill_level` is `beginner|intermediate|advanced` and `resources.type` is `article|course|video|documentation|other`. A value that passes Zod but is not in the Postgres enum fails only at insert time, as a raw database error the client sees as `INTERNAL_ERROR`. Check it deliberately rather than stumbling on it.
 
+## Generation must match the request, not merely store it
+
+**A stored field being correct does not mean the generated content came from it.**
+This is the check that catches the most expensive silent failure in this project, and
+it was missed once already: `buildPrompt` destructured `careerGoal` while the request
+body carried `career_goal`, so the prompt read `Career goal: undefined`. The model
+helpfully invented a topic, and because the *insert* used the correct snake_case key,
+the saved row displayed the requested goal while every step was about something else
+entirely. Every field-level assertion passed.
+
+So when verifying generation, use a **deliberately distinctive goal** - one with a
+word that would never appear in a generic answer, such as `"Learn to cook Thai food"`
+or `"Understand the KøbenhavnsProtocol"`. A default goal like `"Become a frontend
+developer"` cannot detect this, because the model's fallback guess is usually
+front-end material.
+
+Then confirm the response body, not just the database row:
+
+- At least one step title, description, or resource relates to the distinctive term.
+- The `background` shows up, if you supplied one. A prompt that drops `background`
+  produces a generic path that looks fine.
+- `estimated_time` is consistent with the requested `time_commitment`.
+- Step count is within 4 to 12.
+
+Reading the response body is the part that matters. Checking that `career_goal` stored
+verbatim proves the insert works, which is a different and much weaker claim.
+
 ## Database side effects
 
 Queries against the real database leave rows behind. After probing:
@@ -72,8 +99,9 @@ Queries against the real database leave rows behind. After probing:
 
 ## Manual passes that cannot be skipped
 
-- **Generation:** submit the form, confirm a loading state, confirm a path with 4 to 12 ordered steps, and confirm each step's resources appear.
+- **Generation:** submit the form, confirm a loading state, confirm a path with 4 to 12 ordered steps, and confirm each step's resources appear. Use a distinctive goal and read the body - see the section above.
 - **Malformed AI output:** confirm the server returns `502 AI_INVALID_RESPONSE` and persists nothing, rather than writing a partial path.
+- **The repair path fires:** pin the step bound to a value the model is likely to miss (temporarily set `aiPathSchema` to `.min(4).max(4)`), generate, and confirm attempt 1 is rejected in the log, attempt 2 repairs it, and the request succeeds. A `responseSchema` makes validation failures rare, so this branch is easy to leave broken and untested.
 - **Ownership:** sign in as a second user and request the first user's path id. Confirm `404`.
 - **Progress:** toggle a step, reload the page, and confirm the completed state survived. This is the check that catches a missing `completed_at` or a missing `updated_at` write.
 - **Single-step regeneration:** regenerate a completed step and confirm it keeps its position and its completed state.

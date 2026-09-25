@@ -44,7 +44,7 @@ See the "Settled decisions" section in `../AGENTS.md` for the reasoning.
 
 ---
 
-**Progress:** 1 of 6 phases complete
+**Progress:** 2 of 6 phases complete
 
 ## Phase 1 — Session
 
@@ -94,7 +94,7 @@ users. They are not in a phase yet.
 
 ## Phase 2 — Generation API
 
-**Status:** not started
+**Status:** complete
 
 **Goal:** a validated path can be generated and stored from the command line.
 

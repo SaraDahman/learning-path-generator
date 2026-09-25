@@ -15,13 +15,48 @@ A model response is untrusted input. It is text from the internet that happens t
 - Missing key fails explicitly with `503 AI_NOT_CONFIGURED`, mirroring how `supabase.js` fails with `SUPABASE_NOT_CONFIGURED`. Do not fall back to a default, and do not let the request reach the model.
 - The key is read at module load, so it must exist before the process starts. See `verification-checklist`.
 
+## Model availability is not stable
+
+Do not hardcode a single model id, and do not trust any id written here. Measured on
+this project's free-tier key:
+
+| model | result |
+| --- | --- |
+| `gemini-2.5-flash` | `404` - retired, not available to new users |
+| `gemini-3.8-flash` | `503` on every attempt |
+| `gemini-3.7-flash` | about 50% `503` |
+| `gemini-3.5-flash` | works, but intermittently `503` |
+| `gemini-3.1-flash-lite`, `gemini-3.5-flash-lite` | reliable, and roughly 5x faster |
+
+So `GEMINI_MODELS` is a **comma-separated fallback chain**, read at module load, and
+`generateJson` walks it: one attempt per model, one retry on a retryable status
+(`429`/`5xx`/timeout) before moving to the next, capped by a total attempt budget. A
+single 404 on a retired id is the normal case, not an exception, so a 404 falls
+through to the next model rather than ending the request.
+
+When a generation fails, **read the server log line first**. It names each model and
+the reason. Re-measure availability with `GET /v1beta/models` and a real
+`generateContent` call rather than assuming the chain is still correct.
+
 ## Request discipline
 
 - Request **structured JSON** via the response MIME type. Do not ask for prose and try to parse it.
 - Attach a **30 second `AbortSignal`**. Generation that hangs is worse than generation that fails.
-- Retry **once** on `429` and `5xx` with a short backoff, then give up. Do not build a retry loop.
+- Retry **once** on `429` and `5xx` with a short backoff, then fall through to the next model. Do not build an unbounded retry loop.
 - A missing or rejected API key is a configuration problem, not a transient one. Never retry it.
 - Never log the key, the full prompt, or the raw model response to the server log.
+
+## The responseSchema is a subset, not JSON Schema
+
+Gemini accepts a restricted schema dialect and rejects unknown keywords outright
+rather than ignoring them. `additionalProperties` is a `400`, not a no-op. Stick to
+`type`, `properties`, `required`, `items`, `enum`, and `description`.
+
+This matters because a `responseSchema` largely eliminates the malformed-JSON case the
+pipeline below defends against, which means **the repair path is easy to leave
+untested**. It is still the thing that catches a wrong step count, and it has been
+observed to fire on a real request: the model returned 5 steps against a 4-step bound,
+validation rejected it, the repair prompt asked for 4, and the request succeeded.
 
 ## The defensive parse pipeline
 
@@ -47,6 +82,14 @@ Request shape, which the prompt builder also reads:
 - `skill_level` - required, and **must be one of** `beginner`, `intermediate`, `advanced`. These are the values of the `public.skill_level_type` Postgres enum, not free text.
 - `background` - optional, nullable column.
 - `time_commitment` - required string, stored in a `TEXT` column and shown to the user verbatim.
+
+**The real column names are not what they look like.** They were read back from the
+live PostgREST schema, not assumed. `learning_paths` has `career_goal`,
+`background`, and `time_commitment` - there is no `title`, no `summary`, and no
+`timeframe_weeks` integer. `steps` has `step_order` and a free-text `estimated_time`,
+not `position` or `estimated_hours`. `resources` has **no** `learning_path_id`; it
+hangs off `step_id`, so resources are nested per step in the AI response. Writing to
+the intuitive names fails at runtime. Re-read the schema before adding a column.
 
 Response shape, `aiPathSchema`:
 
