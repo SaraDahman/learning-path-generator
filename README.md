@@ -3,10 +3,13 @@
 Full-stack authentication starter with an Express API, React/Tailwind frontend,
 and Supabase Auth. Zod schemas are shared between the client and the server.
 
+The build is organised into six phases in [PHASES.md](PHASES.md). Project rules live
+in `.agents/skills/` and are loadable with the `skill` tool.
+
 ## Run locally
 
 1. `npm install`
-2. `cp .env.example .env` and fill in the three Supabase values.
+2. `cp .env.example .env` and fill in the three Supabase values plus `GEMINI_API_KEY`.
 3. `npm run dev` — one process on port `5055` serving both API and UI.
 
 Open http://localhost:5055. Port 5000 is unusable on macOS (AirPlay Receiver
