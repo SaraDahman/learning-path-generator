@@ -116,3 +116,21 @@ export const deleteAuthUser = async (userId) => {
   const { error } = await getAdminSupabase().auth.admin.deleteUser(userId);
   if (error) throw error;
 };
+
+export const getProfile = async (userId) => {
+  const { data, error } = await getAdminSupabase()
+    .from("profiles")
+    .select("id, username, email")
+    .eq("id", userId)
+    .maybeSingle();
+
+  if (error) {
+    throw new AppError("Your account could not be read.", {
+      statusCode: 500,
+      code: "PROFILE_LOOKUP_FAILED",
+      details: error,
+    });
+  }
+
+  return data;
+};

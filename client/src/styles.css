@@ -155,3 +155,73 @@ button:disabled {
 .submit-button:disabled {
   opacity: 0.72;
 }
+
+.session-card {
+  border: 1px solid #e2e7f2;
+  border-radius: 1.1rem;
+  background: white;
+  padding: 1.75rem;
+  box-shadow: 0 14px 32px rgba(24, 35, 61, 0.07);
+}
+
+.session-badge {
+  display: flex;
+  width: 2.6rem;
+  height: 2.6rem;
+  align-items: center;
+  justify-content: center;
+  border-radius: 0.85rem;
+  background: #eef0ff;
+  color: #4e5ce8;
+  margin-bottom: 1.35rem;
+}
+
+.signout-button {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.5rem;
+  margin-top: 1.75rem;
+  border: 1px solid #dce1ec;
+  border-radius: 0.7rem;
+  background: white;
+  padding: 0.6rem 1rem;
+  color: #4a5570;
+  font-size: 0.8rem;
+  font-weight: 600;
+  transition: border-color 160ms ease, background-color 160ms ease, color 160ms ease;
+}
+
+.signout-button:hover {
+  border-color: #c7cee0;
+  background: #f7f8fc;
+  color: #18233d;
+}
+
+.session-skeleton-line {
+  border-radius: 0.5rem;
+  background: #eceff6;
+}
+
+.session-skeleton-eyebrow {
+  width: 5.5rem;
+  height: 0.7rem;
+  margin-bottom: 0.85rem;
+}
+
+.session-skeleton-title {
+  width: 60%;
+  height: 1.9rem;
+  margin-bottom: 0.9rem;
+}
+
+.session-skeleton-body {
+  width: 75%;
+  height: 0.85rem;
+  margin-bottom: 1.75rem;
+}
+
+.session-skeleton-button {
+  width: 8rem;
+  height: 2.35rem;
+  border-radius: 0.7rem;
+}

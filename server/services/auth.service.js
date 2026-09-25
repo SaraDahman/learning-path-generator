@@ -11,8 +11,9 @@ export const register = async ({ username, email, password }) => {
     });
   }
 
+  let profile;
   try {
-    await userRepository.createProfile({
+    profile = await userRepository.createProfile({
       id: authData.user.id,
       username,
       email,
@@ -27,10 +28,7 @@ export const register = async ({ username, email, password }) => {
   }
 
   return {
-    user: {
-      id: authData.user.id,
-      email: authData.user.email,
-    },
+    user: profile,
     session: authData.session,
     message: authData.session
       ? 'Account created successfully.'
@@ -41,8 +39,10 @@ export const register = async ({ username, email, password }) => {
 export const login = async ({ email, password }) => {
   const authData = await userRepository.signIn({ email, password });
 
+  const profile = await userRepository.getProfile(authData.user.id);
+
   return {
-    user: {
+    user: profile ?? {
       id: authData.user.id,
       email: authData.user.email,
     },
@@ -50,3 +50,20 @@ export const login = async ({ email, password }) => {
     message: 'Welcome back.',
   };
 };
+
+export const getCurrentUser = async (userId) => {
+  const profile = await userRepository.getProfile(userId);
+
+  if (!profile) {
+    throw new AppError('Your account profile could not be found.', {
+      statusCode: 404,
+      code: 'PROFILE_NOT_FOUND',
+    });
+  }
+
+  return { user: profile };
+};
+
+export const logout = async () => ({
+  message: 'Signed out.',
+});

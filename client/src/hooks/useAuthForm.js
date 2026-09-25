@@ -1,6 +1,7 @@
 import { useState } from "react";
 import { loginSchema, signupSchema } from "../../../shared/validation.js";
 import * as authApi from "../api/auth.api.js";
+import useAuthSession from "./useAuthSession.js";
 
 const initialValues = {
   username: "",
@@ -23,6 +24,7 @@ export default function useAuthForm() {
   const [formError, setFormError] = useState("");
   const [successMessage, setSuccessMessage] = useState("");
   const [isSubmitting, setIsSubmitting] = useState(false);
+  const { adoptSession } = useAuthSession();
 
   const isSignup = mode === "signup";
   const schema = isSignup ? signupSchema : loginSchema;
@@ -79,7 +81,10 @@ export default function useAuthForm() {
       setSuccessMessage(
         data.message || (isSignup ? "Account created." : "Welcome back."),
       );
-      if (isSignup && !data.session) {
+
+      if (data.session?.access_token) {
+        adoptSession({ accessToken: data.session.access_token, user: data.user });
+      } else if (isSignup) {
         setValues(initialValues);
       }
     } catch (error) {
