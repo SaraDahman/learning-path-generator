@@ -4,6 +4,7 @@ import { randomUUID } from 'node:crypto';
 import express from 'express';
 import { createServer as createViteServer } from 'vite';
 import authRoutes from './routes/auth.routes.js';
+import pathRoutes from './routes/path.routes.js';
 import {
   errorMiddleware,
   notFoundMiddleware,
@@ -29,6 +30,7 @@ app.get('/api/health', (_req, res) => {
 });
 
 app.use('/api/auth', authRoutes);
+app.use('/api/paths', pathRoutes);
 app.use('/api', notFoundMiddleware);
 
 const startServer = async () => {
