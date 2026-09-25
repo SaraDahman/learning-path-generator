@@ -211,6 +211,7 @@ Facts that constrain the code and are easy to get wrong:
 - **Every foreign key is `ON DELETE CASCADE`.** Deleting a `learning_paths` row removes its steps and their resources automatically. No manual teardown code, and no orphaned rows to defend against.
 - **There is no `updated_at` trigger.** The `updated_at` columns have a `DEFAULT CURRENT_TIMESTAMP` but nothing refreshes them, so any `UPDATE` must set `updated_at` explicitly or it silently keeps a stale value.
 - `resources` has no `updated_at` at all, so replacing a step's resources is delete-then-insert, never upsert.
+- Toggling a step writes three columns together, and all three are load-bearing: `is_completed` is the state, `completed_at` is when it happened, and `updated_at` is what proves the write landed. A test that only checks `is_completed` passes even when the other two are never written, so assert all three. Un-toggling must set `completed_at` back to `null` rather than leaving the old timestamp, which would claim a step was completed at a moment it was not.
 - Indexes exist on `learning_paths.user_id`, `steps.learning_path_id`, and `resources.step_id`, so per-user scoping is index-backed.
 - `estimated_time` and `time_commitment` are `TEXT`, not intervals. They hold human strings such as `"about 2 hours"`.
 - There is **no quiz data anywhere in this schema**, and quizzes are not a planned feature. Do not design around them.

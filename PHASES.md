@@ -44,7 +44,7 @@ See the "Settled decisions" section in `../AGENTS.md` for the reasoning.
 
 ---
 
-**Progress:** 2 of 6 phases complete
+**Progress:** 3 of 6 phases complete
 
 ## Phase 1 — Session
 
@@ -129,7 +129,7 @@ server/controllers/path.controller.js new
 
 ## Phase 3 — Read & progress API
 
-**Status:** not started
+**Status:** complete
 
 **Goal:** the whole stored-path surface exists and is provably isolated per user.
 

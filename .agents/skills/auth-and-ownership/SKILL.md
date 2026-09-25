@@ -26,7 +26,7 @@ The only trustworthy user identifier in a request is the one `requireAuth` resol
 - **`req.user.id` is the only source of identity.** Never read a user id from the request body, a query parameter, a route parameter, or a header the client controls. A `user_id` in a payload is untrusted input; ignore it, and ideally never accept it.
 - **Scope every read and write by that id.** A query without a user filter is a data leak, even if the response is filtered afterwards. Filter in the database, not in JavaScript.
 - **Ownership failures are `404 PATH_NOT_FOUND`, not `403`.** A `403` confirms the row exists, which is itself information. Answer exactly as if it did not exist.
-- **There are no public path routes.** Every route in `path.routes.js` carries `requireAuth`. `learning_paths.user_id` is `NOT NULL`, so an unauthenticated request cannot even be represented.
+- **There are no public path routes.** Every route in `path.routes.js` carries `requireAuth`, applied once with `router.use` rather than repeated per route. `learning_paths.user_id` is `NOT NULL`, so an unauthenticated request cannot even be represented.
 - **No Supabase SDK in the browser.** The client never imports `@supabase/supabase-js`. All Supabase access happens server-side through repositories, using the service-role key. The client talks to `/api/...` with a Bearer token and nothing else.
 - **Never trust the client for a row's owner.** The client may send a path id; the server resolves that id *within the caller's own rows* and treats anything else as missing.
 
@@ -52,6 +52,11 @@ Validate the token, do not decode it. A JWT is only trustworthy once Supabase ha
 - **Listing a user's paths** - filter `learning_paths` by `user_id` directly, which is index-backed.
 
 Prefer two small scoped queries over one clever join. A single query that fetches a step by id without a user filter and then filters in memory is a bug even when it happens to be correct today.
+
+Two consequences that are easy to miss:
+
+- **A step id is not sufficient scope on its own.** A URL carries both `:id` and `:stepId`, and they can disagree. `PATCH /api/paths/A/steps/B` where `B` belongs to path `C` - both owned by the caller - must be rejected, because the pair is what identifies the row, not `B` alone. Resolve the path as owned *and* filter the write by both columns. Two `404`s cover this: `PATH_NOT_FOUND` for the path, `STEP_NOT_FOUND` for the step.
+- **Validate path params as uuids at the edge.** PostgREST rejects a non-uuid filter value with `22P02`, which a repository's catch-all maps to a `500`. That turns a typo in a URL into a server fault. `validateParams` in `error.middleware.js` mirrors `validateBody` for exactly this, and a bad id should be a `400 VALIDATION_ERROR`.
 
 ## Client session contract
 
