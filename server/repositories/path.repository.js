@@ -117,3 +117,72 @@ export const deleteLearningPath = async (pathId) => {
 
   return !error;
 };
+
+const mapPathReadError = (error) => {
+  console.warn(`[path] read failed (${error?.code || 'unknown'}): ${error?.message}`);
+
+  return new AppError('Your learning paths could not be read.', {
+    statusCode: 500,
+    code: 'PATH_READ_FAILED',
+    details: error,
+  });
+};
+
+const PATH_COLUMNS =
+  'id, career_goal, skill_level, background, time_commitment, status, created_at, updated_at';
+
+/**
+ * Every read is filtered by user_id in the query itself, so another user's rows
+ * are never loaded and then filtered out. Scoping in application code would
+ * still put them in memory and make a mistake leak them.
+ */
+export const listPathsForUser = async (userId) => {
+  const { data, error } = await getAdminSupabase()
+    .from('learning_paths')
+    .select(`${PATH_COLUMNS}, steps(step_order, is_completed)`)
+    .eq('user_id', userId)
+    .order('created_at', { ascending: false });
+
+  if (error) throw mapPathReadError(error);
+  return data;
+};
+
+/**
+ * Steps come back with their resources embedded, since resources hang off
+ * steps.step_id. step_order is sorted in SQL; the service relies on that.
+ */
+export const getPathForUser = async (userId, pathId) => {
+  const { data, error } = await getAdminSupabase()
+    .from('learning_paths')
+    .select(
+      `${PATH_COLUMNS}, steps(id, step_order, title, description, estimated_time, is_completed, completed_at, resources(id, title, url, type))`,
+    )
+    .eq('id', pathId)
+    .eq('user_id', userId)
+    .maybeSingle();
+
+  if (error) throw mapPathReadError(error);
+  return data;
+};
+
+/**
+ * completed_at and updated_at are written explicitly: there is no trigger on
+ * this table, so omitting them silently leaves a step marked complete with no
+ * timestamp and an updated_at that never moves.
+ */
+export const setStepCompletion = async ({ stepId, pathId, isCompleted }) => {
+  const { data, error } = await getAdminSupabase()
+    .from('steps')
+    .update({
+      is_completed: isCompleted,
+      completed_at: isCompleted ? new Date().toISOString() : null,
+      updated_at: new Date().toISOString(),
+    })
+    .eq('id', stepId)
+    .eq('learning_path_id', pathId)
+    .select('id, step_order, is_completed, completed_at, updated_at')
+    .maybeSingle();
+
+  if (error) throw mapPathWriteError(error, 'steps');
+  return data;
+};

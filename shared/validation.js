@@ -73,3 +73,19 @@ export const aiPathSchema = z.object({
   // anyone finishes.
   steps: z.array(aiStepSchema).min(4).max(12),
 });
+
+export const stepCompletionSchema = z.object({
+  is_completed: z.boolean({
+    error: 'is_completed must be true or false',
+  }),
+});
+
+// PostgREST rejects a non-uuid in a filter with 22P02, which would surface as a
+// 500. Validating the shape here keeps a bad URL a 400.
+export const pathIdParamSchema = z.object({
+  id: z.string().uuid('That path id is not valid'),
+});
+
+export const stepParamsSchema = pathIdParamSchema.extend({
+  stepId: z.string().uuid('That step id is not valid'),
+});

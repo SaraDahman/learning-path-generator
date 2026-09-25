@@ -29,7 +29,28 @@ export const validateBody = (schema) => (req, _res, next) => {
   next();
 };
 
-export const notFoundMiddleware = (req, _res, next) => {
+export const validateParams = (schema) => (req, _res, next) => {
+  const result = schema.safeParse(req.params);
+
+  if (!result.success) {
+    const fields = Object.fromEntries(
+      result.error.issues.map((issue) => [issue.path.join('.'), issue.message]),
+    );
+
+    return next(
+      new AppError('That address is not valid.', {
+        statusCode: 400,
+        code: 'VALIDATION_ERROR',
+        details: { fields },
+      }),
+    );
+  }
+
+  req.params = result.data;
+  next();
+};
+
+export const notFoundMiddleware = (req, res, next) => {
   next(
     new AppError(`Route ${req.method} ${req.originalUrl} was not found.`, {
       statusCode: 404,

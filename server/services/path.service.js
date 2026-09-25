@@ -201,3 +201,117 @@ export const generatePath = async (userId, input) => {
     })),
   };
 };
+
+const summariseProgress = (steps = []) => {
+  const total = steps.length;
+  const completed = steps.filter((step) => step.is_completed).length;
+
+  return {
+    total,
+    completed,
+    percent: total === 0 ? 0 : Math.round((completed / total) * 100),
+  };
+};
+
+const shapeStep = (step) => ({
+  id: step.id,
+  order: step.step_order,
+  title: step.title,
+  description: step.description,
+  estimatedTime: step.estimated_time,
+  isCompleted: step.is_completed,
+  completedAt: step.completed_at,
+  resources: (step.resources || []).map((resource) => ({
+    id: resource.id,
+    title: resource.title,
+    url: resource.url,
+    type: resource.type,
+  })),
+});
+
+export const listPaths = async (userId) => {
+  const rows = await pathRepository.listPathsForUser(userId);
+
+  return rows.map((row) => ({
+    id: row.id,
+    careerGoal: row.career_goal,
+    skillLevel: row.skill_level,
+    background: row.background,
+    timeCommitment: row.time_commitment,
+    status: row.status,
+    createdAt: row.created_at,
+    updatedAt: row.updated_at,
+    progress: summariseProgress(row.steps),
+  }));
+};
+
+/**
+ * Resolves a path the caller owns. A path that exists but belongs to someone
+ * else returns the same error as one that never existed, on purpose: a
+ * distinguishable 403 or a different message would confirm the id is real.
+ */
+const requireOwnedPath = async (userId, pathId) => {
+  const row = await pathRepository.getPathForUser(userId, pathId);
+
+  if (!row) {
+    throw new AppError('That learning path could not be found.', {
+      statusCode: 404,
+      code: 'PATH_NOT_FOUND',
+    });
+  }
+
+  return row;
+};
+
+export const getPath = async (userId, pathId) => {
+  const row = await requireOwnedPath(userId, pathId);
+  const steps = [...(row.steps || [])].sort((a, b) => a.step_order - b.step_order);
+
+  return {
+    id: row.id,
+    careerGoal: row.career_goal,
+    skillLevel: row.skill_level,
+    background: row.background,
+    timeCommitment: row.time_commitment,
+    status: row.status,
+    createdAt: row.created_at,
+    updatedAt: row.updated_at,
+    progress: summariseProgress(steps),
+    steps: steps.map(shapeStep),
+  };
+};
+
+export const setStepCompletion = async (userId, pathId, stepId, isCompleted) => {
+  await requireOwnedPath(userId, pathId);
+
+  // Scoped by learning_path_id as well as id, so a stepId from another path
+  // cannot be written even if the ids were guessed.
+  const step = await pathRepository.setStepCompletion({
+    stepId,
+    pathId,
+    isCompleted,
+  });
+
+  if (!step) {
+    throw new AppError('That step could not be found.', {
+      statusCode: 404,
+      code: 'STEP_NOT_FOUND',
+    });
+  }
+
+  return {
+    id: step.id,
+    order: step.step_order,
+    isCompleted: step.is_completed,
+    completedAt: step.completed_at,
+    updatedAt: step.updated_at,
+  };
+};
+
+export const deletePath = async (userId, pathId) => {
+  await requireOwnedPath(userId, pathId);
+
+  await pathRepository.deleteLearningPath(pathId);
+
+  return { message: 'Learning path deleted.' };
+};
