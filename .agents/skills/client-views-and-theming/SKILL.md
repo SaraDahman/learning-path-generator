@@ -7,22 +7,28 @@ description: Client structure and UI contracts for the Learning Path Generator R
 
 The client is a plain React SPA. Its job is to show state and collect input; every decision about what is valid and what gets stored belongs to the server. This skill covers how the pieces fit together and the visual contracts that must stay consistent.
 
+## One fetch implementation
+
+`client/src/api/http.js` owns the only `fetch` call in the app. `auth.api.js` and `path.api.js` are thin wrappers over its `request`, and session storage helpers live beside it. Adding a second hand-rolled `fetch` duplicates the 401-clears-the-session behaviour, which is the kind of rule that silently stops holding in one module and not the other.
+
+`request` distinguishes two failure kinds, and callers depend on the difference: a non-2xx becomes an `Error` with `isApiError`, the envelope's `code`, and any `fields`, while a transport failure throws a plain `Error` with no `isApiError` and the shared `offlineMessage`. "The server said no" and "the server was never reached" deserve different messages, and `useAuthForm` maps them to different copy.
+
 ## Routing
 
-`react-router-dom` is not installed yet; add it when the first protected view lands. Until then `App.jsx` renders a single `AuthPage`.
+`react-router-dom` v7 is installed and `BrowserRouter` is mounted in `App.jsx`, so the route table below is the real one rather than a target.
 
 Target route table:
 
 | Route | View | Protected |
 | --- | --- | --- |
 | `/login` | `AuthPage` | no |
-| `/` | redirect to `/generate` | yes |
+| `/` | redirect to `/dashboard` | yes |
 | `/generate` | `GeneratePage` | yes |
 | `/paths/:id` | `PathPage` | yes |
 | `/dashboard` | `DashboardPage` | yes |
 | `*` | not-found | no |
 
-- The login route is reachable whether or not a session exists, and redirects to `/generate` when one does.
+- The login route is reachable whether or not a session exists, and redirects to `/dashboard` when one does, for both a fresh sign-in and a rehydrated session. That redirect is the *only* thing that lands a new user on the dashboard, so the login form does not navigate itself. `/` redirects there too. `SessionPanel` is consequently unreachable and is dead code, kept only until the account surface exists.
 - `App.jsx` stays a thin shell. It declares the router and the route elements; it does not hold state or markup.
 - Pages compose components. Leaf markup belongs in `components/`.
 
@@ -37,7 +43,8 @@ A wrapper that guards every protected route.
 ## State lives in hooks
 
 - `usePathGeneration` owns the generation lifecycle as an explicit state machine: `idle`, `loading`, `success`, `error`. The view renders from that state and nothing else.
-- Only one request is in flight at a time. A second submit while `loading` is ignored, not queued.
+- Only one request is in flight at a time. A second submit while `loading` is ignored, not queued. **Guard this with a `useRef`, not the loading state.** State is not updated until the next render, so two submits in the same tick both read a stale `status === "idle"` and both fire. For a paid model call that is two paths and two charges for one click. A ref is synchronous, so the second submit is genuinely ignored. Disabling the button is not a substitute; it does not stop a programmatic `requestSubmit` or an Enter keypress.
+- `generate` returns `{ ok, path }` or `{ ok, error }` **as well as** storing the state, so the caller can apply the server's per-field errors from that same tick instead of waiting for a re-render to read them back.
 - **"Start over" and "regenerate" reset the state to `loading` without leaving a stale path on screen.** Showing the old roadmap underneath a spinner is the classic bug here.
 - A failure sets `error` with a message from the API envelope. The previous path is not silently retained; either the view is empty or it is clearly marked stale.
 - Form state for the generate form lives in its own hook. Do not lift it into `App.jsx`.
@@ -54,7 +61,14 @@ A wrapper that guards every protected route.
 
 These components exist and are not to be duplicated:
 
-`FormAlert` (inline messages, including API errors) · `SubmitButton` (pending state and disabled handling) · `AuthField` (the labelled field shell with error slot) · `HeroPanel` and `FeatureCard` (marketing panel, reused on the generate page) · `ModeTabs`.
+`FormAlert` (inline messages, including API errors) · `SubmitButton` (pending state and disabled handling) · `AuthField` (the labelled field shell with error slot) · `HeroPanel` and `FeatureCard` (marketing panel) · `ModeTabs` · `AppHeader` (protected-page chrome: nav plus sign out) · `side-card` in the stylesheet.
+
+`AuthField` takes an `as` prop of `"input"`, `"select"`, or `"textarea"`, so the generate form's dropdown and multi-line background field reuse the label, the `aria-describedby` wiring, and the error paragraph instead of duplicating them. Two consequences of widening it:
+
+- **`autoComplete` is opt-in.** It used to be inferred from the field id, which only produced valid tokens for the three auth fields. Inferring it again would emit `autocomplete="career_goal"`, so `AuthForm` passes `username`/`email`/`current-password` explicitly. Dropping the password one silently breaks password managers, and nothing else fails visibly.
+- A `select` needs its own affordance: the native arrow is removed with `appearance: none`, so `.field-chevron` replaces it and must keep `pointer-events: none` or it swallows clicks on the control.
+
+The generate page does **not** reuse `HeroPanel`. That is a dark marketing panel sized for a split landing page; wrapping a working form in it wastes the width and inverts the form's contrast. The page uses `AppHeader` plus a `side-card` aside.
 
 The hand-written classes in `styles.css` - `field-shell`, `mode-tab`, `submit-button`, `form-alert`, `field-error` - are referenced by these components. Extend that stylesheet rather than inlining one-off CSS in a component, and keep the pattern: shared visual vocabulary in `styles.css`, layout in Tailwind utilities.
 

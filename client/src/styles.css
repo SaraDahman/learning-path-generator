@@ -21,7 +21,9 @@ body {
 }
 
 button,
-input {
+input,
+select,
+textarea {
   font: inherit;
 }
 
@@ -86,7 +88,8 @@ button:disabled {
   color: #8690a7;
 }
 
-.field-shell input {
+.field-shell input,
+.field-control {
   min-width: 0;
   width: 100%;
   border: 0;
@@ -97,8 +100,49 @@ button:disabled {
   font-size: 0.9rem;
 }
 
-.field-shell input::placeholder {
+.field-shell input::placeholder,
+.field-control::placeholder {
   color: #a3acc0;
+}
+
+.field-shell-select {
+  position: relative;
+}
+
+.field-shell-select .field-control {
+  appearance: none;
+  cursor: pointer;
+  padding-right: 1.4rem;
+}
+
+.field-chevron {
+  position: absolute;
+  right: 0.95rem;
+  color: #8690a7;
+  font-size: 0.95rem;
+  line-height: 1;
+  pointer-events: none;
+}
+
+.field-shell-block {
+  align-items: flex-start;
+  padding: 0.85rem 0.95rem 0;
+}
+
+.field-shell-block .field-icon {
+  margin-top: 0.12rem;
+}
+
+.field-shell-block .field-control {
+  resize: vertical;
+  min-height: 4.5rem;
+  line-height: 1.5;
+}
+
+.field-hint {
+  color: #7a849b;
+  font-size: 0.75rem;
+  line-height: 1.35;
 }
 
 .field-error {
@@ -195,6 +239,18 @@ button:disabled {
   border-color: #c7cee0;
   background: #f7f8fc;
   color: #18233d;
+}
+
+/* The top margin suits the session card's stacked layout, not the header bar. */
+.signout-button-compact {
+  margin-top: 0;
+}
+
+.side-card {
+  border: 1px solid #e2e7f2;
+  border-radius: 1rem;
+  background: white;
+  padding: 1.25rem;
 }
 
 .session-skeleton-line {

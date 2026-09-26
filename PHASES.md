@@ -44,7 +44,7 @@ See the "Settled decisions" section in `../AGENTS.md` for the reasoning.
 
 ---
 
-**Progress:** 3 of 6 phases complete
+**Progress:** 4 of 6 phases complete
 
 ## Phase 1 — Session
 
@@ -165,7 +165,7 @@ All four protected.
 
 ## Phase 4 — Client shell & generate form
 
-**Status:** not started
+**Status:** complete
 
 **Goal:** generate a path from the browser.
 
@@ -191,7 +191,10 @@ client/src/components/                  reuse FormAlert, SubmitButton, AuthField
 - Routes `/login`, `/`, `/generate`, `/paths/:id`, `/dashboard`, and `*` are declared.
 - A signed-out visitor to a protected route is sent to `/login` with **no flash** of the
   login screen first, because `RequireAuth` waits for rehydration.
-- Signing in lands on `/generate`.
+- Signing in **and** signing up land on `/dashboard`, which is the app's home. `/` redirects there too.
+  (Changed from `/generate` during implementation: the dashboard is where a returning user wants to
+  land, and it is the only place a saved path is visible. `/dashboard` is still a phase-6 stub, so
+  the landing page says so until that phase lands.)
 - Submitting shows a loading state, and a second submit while loading is ignored.
 - An API failure renders in `FormAlert` with the envelope's message. An invalid field
   shows an inline error, which clears when that field is edited.

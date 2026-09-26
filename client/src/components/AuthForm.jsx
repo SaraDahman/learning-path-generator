@@ -36,6 +36,7 @@ export default function AuthForm() {
             error={errors.username}
             icon={UserRound}
             placeholder="How should we call you?"
+            autoComplete="username"
           />
         )}
 
@@ -48,6 +49,7 @@ export default function AuthForm() {
           error={errors.email}
           icon={Mail}
           placeholder="you@example.com"
+          autoComplete="email"
         />
 
         <AuthField
@@ -59,6 +61,7 @@ export default function AuthForm() {
           error={errors.password}
           icon={LockKeyhole}
           placeholder="At least 6 characters"
+          autoComplete="current-password"
         />
 
         {formError && <FormAlert tone="error">{formError}</FormAlert>}

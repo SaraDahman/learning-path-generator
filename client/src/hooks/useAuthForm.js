@@ -1,6 +1,7 @@
 import { useState } from "react";
 import { loginSchema, signupSchema } from "../../../shared/validation.js";
 import * as authApi from "../api/auth.api.js";
+import { offlineMessage } from "../api/http.js";
 import useAuthSession from "./useAuthSession.js";
 
 const initialValues = {
@@ -94,9 +95,7 @@ export default function useAuthForm() {
         }
         setFormError(error.message);
       } else {
-        setFormError(
-          "We could not reach the server. Check your connection and try again.",
-        );
+        setFormError(offlineMessage);
       }
     } finally {
       setIsSubmitting(false);
